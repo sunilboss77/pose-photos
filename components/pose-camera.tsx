@@ -12,6 +12,8 @@ import {
   Download,
   X,
   ImageIcon,
+  Zap,
+  ZapOff,
 } from 'lucide-react'
 import { POSE_CATEGORIES, POSES } from '@/lib/poses'
 import { cn } from '@/lib/utils'
@@ -33,6 +35,8 @@ export function PoseCamera() {
   const [timerSeconds, setTimerSeconds] = useState<0 | 3 | 10>(0)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [flash, setFlash] = useState(false)
+  const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('off')
+  const [screenFlash, setScreenFlash] = useState(false)
   const [photos, setPhotos] = useState<CapturedPhoto[]>([])
   const [galleryOpen, setGalleryOpen] = useState(false)
 
@@ -75,15 +79,68 @@ export function PoseCamera() {
     }
   }, [facingMode])
 
-  const takePhoto = useCallback(() => {
+  // Check if the current frame is dark (for auto flash)
+  const isFrameDark = useCallback(() => {
+    const video = videoRef.current
+    if (!video || video.videoWidth === 0) return false
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return false
+    ctx.drawImage(video, 0, 0, 64, 64)
+    const { data } = ctx.getImageData(0, 0, 64, 64)
+    let total = 0
+    for (let i = 0; i < data.length; i += 4) {
+      total += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+    }
+    const avg = total / (data.length / 4)
+    return avg < 70
+  }, [])
+
+  // Try to toggle hardware torch (rear camera)
+  const setTorch = useCallback(async (on: boolean) => {
+    const track = streamRef.current?.getVideoTracks()[0]
+    if (!track) return false
+    try {
+      const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean }
+      if (!capabilities?.torch) return false
+      await track.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] })
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
+  const takePhoto = useCallback(async () => {
     const video = videoRef.current
     if (!video || video.videoWidth === 0) return
+
+    const shouldFlash =
+      flashMode === 'on' || (flashMode === 'auto' && isFrameDark())
+
+    let torchUsed = false
+    if (shouldFlash) {
+      if (facingMode === 'environment') {
+        torchUsed = await setTorch(true)
+      }
+      if (!torchUsed) {
+        // Screen flash for front camera or when torch is unsupported
+        setScreenFlash(true)
+      }
+      // Give the sensor a moment to adjust to the light
+      await new Promise((r) => setTimeout(r, torchUsed ? 350 : 250))
+    }
 
     const canvas = document.createElement('canvas')
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    if (!ctx) {
+      if (torchUsed) setTorch(false)
+      setScreenFlash(false)
+      return
+    }
 
     if (isMirrored) {
       ctx.translate(canvas.width, 0)
@@ -91,11 +148,14 @@ export function PoseCamera() {
     }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
+    if (torchUsed) setTorch(false)
+    setScreenFlash(false)
+
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
     setPhotos((prev) => [{ id: `${Date.now()}`, dataUrl }, ...prev])
     setFlash(true)
     setTimeout(() => setFlash(false), 180)
-  }, [isMirrored])
+  }, [isMirrored, flashMode, facingMode, isFrameDark, setTorch])
 
   const handleCapture = useCallback(() => {
     if (countdown !== null) return
@@ -146,6 +206,22 @@ export function PoseCamera() {
           <ChevronLeft className="size-6" aria-hidden="true" />
         </Link>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFlashMode((m) => (m === 'off' ? 'on' : m === 'on' ? 'auto' : 'off'))}
+            className={cn(
+              'flex h-10 items-center justify-center gap-1 rounded-full px-3 transition-colors hover:bg-accent',
+              flashMode !== 'off' ? 'text-primary' : 'text-foreground',
+            )}
+            aria-label={`फ्लैश: ${flashMode === 'off' ? 'बंद' : flashMode === 'on' ? 'चालू' : 'ऑटो'}`}
+          >
+            {flashMode === 'off' ? (
+              <ZapOff className="size-5" aria-hidden="true" />
+            ) : (
+              <Zap className="size-5" aria-hidden="true" />
+            )}
+            {flashMode === 'auto' && <span className="text-sm font-semibold">A</span>}
+          </button>
           <button
             type="button"
             onClick={cycleTimer}
@@ -212,6 +288,9 @@ export function PoseCamera() {
 
         {/* Flash effect */}
         {flash && <div className="absolute inset-0 bg-white/90" aria-hidden="true" />}
+
+        {/* Screen flash (fill light for front camera) */}
+        {screenFlash && <div className="fixed inset-0 z-50 bg-white" aria-hidden="true" />}
 
         {/* Camera error */}
         {cameraError && (
