@@ -72,6 +72,13 @@ const CATEGORY_LATE_ALTS: Record<string, Record<number, string>> = {
     29: 'एक आँख पर सूरजमुखी रखने वाला पोज़',
     30: 'घूमती हुई ड्रेस ट्विर्ल पोज़',
   },
+  selfie: {
+    21: 'हाई-एंगल पीस साइन सेल्फी पोज़',
+    22: 'फोन से चेहरा ढककर मिरर सेल्फी पोज़',
+    23: 'विंक और सनग्लासेस वाला प्लेफुल सेल्फी पोज़',
+    24: 'जॉलाइन दिखाता साइड प्रोफाइल सेल्फी पोज़',
+    25: 'हुडी में स्वेटर पॉज़ वाला कोज़ी सेल्फी पोज़',
+  },
   kid: {
     18: 'झुककर ज़मीन की ओर इशारा करता बच्चा',
     19: 'गुब्बारा पकड़कर हाथ हिलाता बच्चा',
@@ -95,7 +102,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 const CATEGORY_COUNTS: Record<string, number> = {
   trending: 30,
   aesthetic: 30,
-  selfie: 20,
+  selfie: 25,
   couple: 20,
   friend: 20,
   family: 20,
