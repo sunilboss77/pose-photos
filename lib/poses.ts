@@ -10,6 +10,16 @@ export type Pose = {
   alt: string
 }
 
+export const CATEGORY_REFERENCE_PHOTOS: Record<string, string> = {
+  trending: '/references/trending.png',
+  aesthetic: '/references/aesthetic.png',
+  selfie: '/references/selfie.png',
+  couple: '/references/couple.png',
+  friend: '/references/friend.png',
+  family: '/references/family.png',
+  kid: '/references/kid.png',
+}
+
 export const POSE_CATEGORIES: PoseCategory[] = [
   { id: 'trending', label: 'ट्रेंडिंग' },
   { id: 'aesthetic', label: 'एस्थेटिक' },

@@ -16,7 +16,7 @@ import {
   ZapOff,
   Sun,
 } from 'lucide-react'
-import { POSE_CATEGORIES, POSES } from '@/lib/poses'
+import { CATEGORY_REFERENCE_PHOTOS, POSE_CATEGORIES, POSES } from '@/lib/poses'
 import { cn } from '@/lib/utils'
 
 type CapturedPhoto = {
@@ -351,7 +351,7 @@ export function PoseCamera() {
           <div className="absolute left-3 top-3 z-10">
             <div className="relative overflow-hidden rounded-lg border-2 border-primary bg-black/60 shadow-lg shadow-primary/20 backdrop-blur">
               <img
-                src={activePose.src || '/placeholder.svg'}
+                src={CATEGORY_REFERENCE_PHOTOS[activePose.category] || activePose.src || '/placeholder.svg'}
                 alt={activePose.alt}
                 className="size-24 object-cover"
               />
