@@ -27,8 +27,8 @@ export function PoseCamera() {
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [activeCategory, setActiveCategory] = useState('selfie')
-  const [activePoseId, setActivePoseId] = useState<string | null>('selfie-1')
+  const [activeCategory, setActiveCategory] = useState('trending')
+  const [activePoseId, setActivePoseId] = useState<string | null>('trending-1')
   const [showGrid, setShowGrid] = useState(false)
   const [timerSeconds, setTimerSeconds] = useState<0 | 3 | 10>(0)
   const [countdown, setCountdown] = useState<number | null>(null)
