@@ -64,6 +64,7 @@ const CATEGORY_LATE_ALTS: Record<string, Record<number, string>> = {
     20: 'बैठकर किताब पढ़ता बच्चा',
     21: 'हवाई जहाज़ की तरह बाँहें फैलाकर संतुलन बनाता बच्चा',
     22: 'टेडी बियर को गले लगाता बच्चा',
+    23: 'दोनों हाथों से पीस साइन बनाता बच्चा',
   },
 }
 
@@ -84,7 +85,7 @@ const CATEGORY_COUNTS: Record<string, number> = {
   couple: 20,
   friend: 20,
   family: 20,
-  kid: 22,
+  kid: 23,
 }
 
 export const POSES: Pose[] = Object.entries(CATEGORY_COUNTS).flatMap(([category, count]) =>
