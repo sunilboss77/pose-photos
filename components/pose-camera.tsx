@@ -349,7 +349,7 @@ export function PoseCamera() {
         {/* Reference photo card (top-left, like phone camera apps) */}
         {activePose && !cameraError && showReference && (
           <div className="absolute left-3 top-3 z-10">
-            <div className="relative overflow-hidden rounded-lg border border-white/30 bg-black/60 shadow-lg backdrop-blur">
+            <div className="relative overflow-hidden rounded-lg border-2 border-primary bg-black/60 shadow-lg shadow-primary/20 backdrop-blur">
               <img
                 src={activePose.src || '/placeholder.svg'}
                 alt={activePose.alt}
@@ -412,7 +412,7 @@ export function PoseCamera() {
                 onClick={() => setZoom(level)}
                 className={cn(
                   'flex size-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
-                  zoom === level ? 'bg-white text-black' : 'text-white hover:bg-white/20',
+                  zoom === level ? 'bg-primary text-primary-foreground' : 'text-white hover:bg-white/20',
                 )}
                 aria-label={`${level}x ज़ूम`}
                 aria-pressed={zoom === level}
@@ -469,7 +469,9 @@ export function PoseCamera() {
             className="flex size-[76px] items-center justify-center rounded-full border-4 border-foreground disabled:opacity-40"
             aria-label="फोटो खींचें"
           >
-            <span className="block size-[62px] rounded-full bg-foreground transition-transform active:scale-90" />
+            <span className="flex size-[62px] items-center justify-center rounded-full bg-foreground transition-transform active:scale-90">
+              <span className="block size-[52px] rounded-full border-4 border-primary" aria-hidden="true" />
+            </span>
           </button>
 
           <button
@@ -492,7 +494,7 @@ export function PoseCamera() {
               className={cn(
                 'shrink-0 rounded-full px-5 py-2 text-sm font-medium transition-colors',
                 activeCategory === cat.id
-                  ? 'bg-foreground text-background'
+                  ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground',
               )}
               aria-pressed={activeCategory === cat.id}
