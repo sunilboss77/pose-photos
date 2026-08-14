@@ -37,6 +37,7 @@ export function PoseCamera() {
   const [flash, setFlash] = useState(false)
   const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('off')
   const [aspectRatio, setAspectRatio] = useState<'full' | '4:3' | '16:9'>('full')
+  const [zoom, setZoom] = useState(1)
   const [screenFlash, setScreenFlash] = useState(false)
   const [photos, setPhotos] = useState<CapturedPhoto[]>([])
   const [galleryOpen, setGalleryOpen] = useState(false)
@@ -150,6 +151,16 @@ export function PoseCamera() {
       }
     }
 
+    // Apply digital zoom: crop into the center of the (aspect-cropped) frame
+    if (zoom > 1) {
+      const zw = Math.round(sw / zoom)
+      const zh = Math.round(sh / zoom)
+      sx += Math.round((sw - zw) / 2)
+      sy += Math.round((sh - zh) / 2)
+      sw = zw
+      sh = zh
+    }
+
     const canvas = document.createElement('canvas')
     canvas.width = sw
     canvas.height = sh
@@ -173,7 +184,7 @@ export function PoseCamera() {
     setPhotos((prev) => [{ id: `${Date.now()}`, dataUrl }, ...prev])
     setFlash(true)
     setTimeout(() => setFlash(false), 180)
-  }, [isMirrored, flashMode, facingMode, aspectRatio, isFrameDark, setTorch])
+  }, [isMirrored, flashMode, facingMode, aspectRatio, zoom, isFrameDark, setTorch])
 
   const handleCapture = useCallback(() => {
     if (countdown !== null) return
@@ -292,7 +303,8 @@ export function PoseCamera() {
           autoPlay
           playsInline
           muted
-          className={cn('size-full object-cover', isMirrored && 'scale-x-[-1]')}
+          className="size-full object-cover transition-transform duration-200"
+          style={{ transform: `${isMirrored ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
         />
 
         {/* Pose overlay: black background becomes transparent with screen blend */}
@@ -312,6 +324,31 @@ export function PoseCamera() {
             <div className="absolute left-2/3 top-0 h-full w-px bg-white/40" />
             <div className="absolute left-0 top-1/3 h-px w-full bg-white/40" />
             <div className="absolute left-0 top-2/3 h-px w-full bg-white/40" />
+          </div>
+        )}
+
+        {/* Zoom controls */}
+        {!cameraError && (
+          <div
+            className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/50 px-1.5 py-1 backdrop-blur"
+            role="group"
+            aria-label="ज़ूम"
+          >
+            {[1, 2, 3].map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setZoom(level)}
+                className={cn(
+                  'flex size-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                  zoom === level ? 'bg-white text-black' : 'text-white hover:bg-white/20',
+                )}
+                aria-label={`${level}x ज़ूम`}
+                aria-pressed={zoom === level}
+              >
+                {level}x
+              </button>
+            ))}
           </div>
         )}
 
