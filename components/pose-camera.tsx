@@ -44,6 +44,7 @@ export function PoseCamera() {
   const [screenFlash, setScreenFlash] = useState(false)
   const [photos, setPhotos] = useState<CapturedPhoto[]>([])
   const [galleryOpen, setGalleryOpen] = useState(false)
+  const [showReference, setShowReference] = useState(true)
 
   const activePose = POSES.find((p) => p.id === activePoseId) ?? null
   const categoryPoses = POSES.filter((p) => p.category === activeCategory)
@@ -221,6 +222,12 @@ export function PoseCamera() {
     setActiveCategory(id)
     const first = POSES.find((p) => p.category === id)
     setActivePoseId(first ? first.id : null)
+    setShowReference(true)
+  }
+
+  function selectPose(id: string) {
+    setActivePoseId(id)
+    setShowReference(true)
   }
 
   function downloadPhoto(photo: CapturedPhoto) {
@@ -337,6 +344,27 @@ export function PoseCamera() {
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 size-full object-contain opacity-80 mix-blend-screen"
           />
+        )}
+
+        {/* Reference photo card (top-left, like phone camera apps) */}
+        {activePose && !cameraError && showReference && (
+          <div className="absolute left-3 top-3 z-10">
+            <div className="relative overflow-hidden rounded-lg border border-white/30 bg-black/60 shadow-lg backdrop-blur">
+              <img
+                src={activePose.src || '/placeholder.svg'}
+                alt={activePose.alt}
+                className="size-24 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setShowReference(false)}
+                className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                aria-label="रेफरेंस फोटो बंद करें"
+              >
+                <X className="size-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Grid overlay */}
@@ -493,7 +521,7 @@ export function PoseCamera() {
             <button
               key={pose.id}
               type="button"
-              onClick={() => setActivePoseId(pose.id)}
+              onClick={() => selectPose(pose.id)}
               className={cn(
                 'size-16 shrink-0 overflow-hidden rounded-xl bg-muted transition-colors',
                 activePoseId === pose.id ? 'ring-2 ring-primary' : 'hover:bg-accent',
