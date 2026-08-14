@@ -36,6 +36,7 @@ export function PoseCamera() {
   const [countdown, setCountdown] = useState<number | null>(null)
   const [flash, setFlash] = useState(false)
   const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('off')
+  const [aspectRatio, setAspectRatio] = useState<'full' | '4:3' | '16:9'>('full')
   const [screenFlash, setScreenFlash] = useState(false)
   const [photos, setPhotos] = useState<CapturedPhoto[]>([])
   const [galleryOpen, setGalleryOpen] = useState(false)
@@ -132,9 +133,26 @@ export function PoseCamera() {
       await new Promise((r) => setTimeout(r, torchUsed ? 350 : 250))
     }
 
+    // Center-crop the frame to the selected aspect ratio (portrait)
+    let sx = 0
+    let sy = 0
+    let sw = video.videoWidth
+    let sh = video.videoHeight
+    if (aspectRatio !== 'full') {
+      const targetR = aspectRatio === '4:3' ? 3 / 4 : 9 / 16
+      const videoR = sw / sh
+      if (videoR > targetR) {
+        sw = Math.round(sh * targetR)
+        sx = Math.round((video.videoWidth - sw) / 2)
+      } else {
+        sh = Math.round(sw / targetR)
+        sy = Math.round((video.videoHeight - sh) / 2)
+      }
+    }
+
     const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    canvas.width = sw
+    canvas.height = sh
     const ctx = canvas.getContext('2d')
     if (!ctx) {
       if (torchUsed) setTorch(false)
@@ -146,7 +164,7 @@ export function PoseCamera() {
       ctx.translate(canvas.width, 0)
       ctx.scale(-1, 1)
     }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
 
     if (torchUsed) setTorch(false)
     setScreenFlash(false)
@@ -155,7 +173,7 @@ export function PoseCamera() {
     setPhotos((prev) => [{ id: `${Date.now()}`, dataUrl }, ...prev])
     setFlash(true)
     setTimeout(() => setFlash(false), 180)
-  }, [isMirrored, flashMode, facingMode, isFrameDark, setTorch])
+  }, [isMirrored, flashMode, facingMode, aspectRatio, isFrameDark, setTorch])
 
   const handleCapture = useCallback(() => {
     if (countdown !== null) return
@@ -205,12 +223,23 @@ export function PoseCamera() {
         >
           <ChevronLeft className="size-6" aria-hidden="true" />
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setAspectRatio((r) => (r === 'full' ? '4:3' : r === '4:3' ? '16:9' : 'full'))}
+            className={cn(
+              'flex h-10 items-center justify-center rounded-full px-2 text-xs font-semibold transition-colors hover:bg-accent',
+              aspectRatio !== 'full' ? 'text-primary' : 'text-foreground',
+            )}
+            aria-label={`आस्पेक्ट रेशियो: ${aspectRatio === 'full' ? 'फुल स्क्रीन' : aspectRatio}`}
+          >
+            {aspectRatio === 'full' ? 'Full' : aspectRatio}
+          </button>
           <button
             type="button"
             onClick={() => setFlashMode((m) => (m === 'off' ? 'on' : m === 'on' ? 'auto' : 'off'))}
             className={cn(
-              'flex h-10 items-center justify-center gap-1 rounded-full px-3 transition-colors hover:bg-accent',
+              'flex h-10 items-center justify-center gap-1 rounded-full px-2 transition-colors hover:bg-accent',
               flashMode !== 'off' ? 'text-primary' : 'text-foreground',
             )}
             aria-label={`फ्लैश: ${flashMode === 'off' ? 'बंद' : flashMode === 'on' ? 'चालू' : 'ऑटो'}`}
@@ -226,7 +255,7 @@ export function PoseCamera() {
             type="button"
             onClick={cycleTimer}
             className={cn(
-              'flex h-10 items-center justify-center gap-1 rounded-full px-3 transition-colors hover:bg-accent',
+              'flex h-10 items-center justify-center gap-1 rounded-full px-2 transition-colors hover:bg-accent',
               timerSeconds > 0 ? 'text-primary' : 'text-foreground',
             )}
             aria-label={`टाइमर: ${timerSeconds === 0 ? 'बंद' : `${timerSeconds} सेकंड`}`}
@@ -250,7 +279,14 @@ export function PoseCamera() {
       </header>
 
       {/* Viewfinder */}
-      <div className="relative flex-1 overflow-hidden bg-black">
+      <div className="flex flex-1 items-center justify-center overflow-hidden bg-black">
+        <div
+          className={cn(
+            'relative overflow-hidden',
+            aspectRatio === 'full' ? 'size-full' : 'max-h-full w-full',
+          )}
+          style={aspectRatio === 'full' ? undefined : { aspectRatio: aspectRatio === '4:3' ? '3 / 4' : '9 / 16' }}
+        >
         <video
           ref={videoRef}
           autoPlay
@@ -298,6 +334,7 @@ export function PoseCamera() {
             <p className="text-center text-base text-muted-foreground text-balance">{cameraError}</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Controls */}
