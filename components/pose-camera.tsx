@@ -14,6 +14,7 @@ import {
   ImageIcon,
   Zap,
   ZapOff,
+  Sun,
 } from 'lucide-react'
 import { POSE_CATEGORIES, POSES } from '@/lib/poses'
 import { cn } from '@/lib/utils'
@@ -38,6 +39,8 @@ export function PoseCamera() {
   const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('off')
   const [aspectRatio, setAspectRatio] = useState<'full' | '4:3' | '16:9'>('full')
   const [zoom, setZoom] = useState(1)
+  const [exposure, setExposure] = useState(0)
+  const [showExposure, setShowExposure] = useState(false)
   const [screenFlash, setScreenFlash] = useState(false)
   const [photos, setPhotos] = useState<CapturedPhoto[]>([])
   const [galleryOpen, setGalleryOpen] = useState(false)
@@ -175,6 +178,10 @@ export function PoseCamera() {
       ctx.translate(canvas.width, 0)
       ctx.scale(-1, 1)
     }
+    // Apply exposure (brightness) to the captured frame
+    if (exposure !== 0) {
+      ctx.filter = `brightness(${1 + exposure * 0.25})`
+    }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
 
     if (torchUsed) setTorch(false)
@@ -184,7 +191,7 @@ export function PoseCamera() {
     setPhotos((prev) => [{ id: `${Date.now()}`, dataUrl }, ...prev])
     setFlash(true)
     setTimeout(() => setFlash(false), 180)
-  }, [isMirrored, flashMode, facingMode, aspectRatio, zoom, isFrameDark, setTorch])
+  }, [isMirrored, flashMode, facingMode, aspectRatio, zoom, exposure, isFrameDark, setTorch])
 
   const handleCapture = useCallback(() => {
     if (countdown !== null) return
@@ -276,6 +283,18 @@ export function PoseCamera() {
           </button>
           <button
             type="button"
+            onClick={() => setShowExposure((s) => !s)}
+            className={cn(
+              'flex size-10 items-center justify-center rounded-full transition-colors hover:bg-accent',
+              exposure !== 0 || showExposure ? 'text-primary' : 'text-foreground',
+            )}
+            aria-label={`एक्सपोज़र: ${exposure > 0 ? '+' : ''}${exposure}`}
+            aria-pressed={showExposure}
+          >
+            <Sun className="size-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
             onClick={() => setShowGrid((g) => !g)}
             className={cn(
               'flex size-10 items-center justify-center rounded-full transition-colors hover:bg-accent',
@@ -304,7 +323,10 @@ export function PoseCamera() {
           playsInline
           muted
           className="size-full object-cover transition-transform duration-200"
-          style={{ transform: `${isMirrored ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
+          style={{
+            transform: `${isMirrored ? 'scaleX(-1) ' : ''}scale(${zoom})`,
+            filter: exposure !== 0 ? `brightness(${1 + exposure * 0.25})` : undefined,
+          }}
         />
 
         {/* Pose overlay: black background becomes transparent with screen blend */}
@@ -324,6 +346,27 @@ export function PoseCamera() {
             <div className="absolute left-2/3 top-0 h-full w-px bg-white/40" />
             <div className="absolute left-0 top-1/3 h-px w-full bg-white/40" />
             <div className="absolute left-0 top-2/3 h-px w-full bg-white/40" />
+          </div>
+        )}
+
+        {/* Exposure slider */}
+        {showExposure && !cameraError && (
+          <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 rounded-full bg-black/50 px-1.5 py-3 backdrop-blur">
+            <span className="text-xs font-semibold text-white" aria-hidden="true">
+              {exposure > 0 ? `+${exposure}` : exposure}
+            </span>
+            <input
+              type="range"
+              min={-2}
+              max={2}
+              step={0.5}
+              value={exposure}
+              onChange={(e) => setExposure(Number(e.target.value))}
+              className="h-32 w-6 accent-white"
+              style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+              aria-label="एक्सपोज़र स्लाइडर"
+            />
+            <Sun className="size-4 text-white" aria-hidden="true" />
           </div>
         )}
 
