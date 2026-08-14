@@ -57,6 +57,14 @@ const CATEGORY_ALTS: Record<string, string[]> = {
   ],
 }
 
+const CATEGORY_LATE_ALTS: Record<string, Record<number, string>> = {
+  kid: {
+    18: 'झुककर ज़मीन की ओर इशारा करता बच्चा',
+    19: 'गुब्बारा पकड़कर हाथ हिलाता बच्चा',
+    20: 'बैठकर किताब पढ़ता बच्चा',
+  },
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   trending: 'ट्रेंडिंग पोज़',
   aesthetic: 'एस्थेटिक पोज़',
@@ -74,7 +82,7 @@ const CATEGORY_COUNTS: Record<string, number> = {
   couple: 20,
   friend: 20,
   family: 20,
-  kid: 17,
+  kid: 20,
 }
 
 export const POSES: Pose[] = Object.entries(CATEGORY_COUNTS).flatMap(([category, count]) =>
@@ -85,7 +93,7 @@ export const POSES: Pose[] = Object.entries(CATEGORY_COUNTS).flatMap(([category,
       id: `${category}-${n}`,
       category,
       src: `/poses/${category}-${n}.png`,
-      alt: alts[i] ?? `${CATEGORY_LABELS[category]} ${n}`,
+      alt: alts[i] ?? CATEGORY_LATE_ALTS[category]?.[n] ?? `${CATEGORY_LABELS[category]} ${n}`,
     }
   }),
 )
