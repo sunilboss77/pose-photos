@@ -20,28 +20,67 @@ export const POSE_CATEGORIES: PoseCategory[] = [
   { id: 'kid', label: 'किड' },
 ]
 
-export const POSES: Pose[] = [
-  { id: 'trending-1', category: 'trending', src: '/poses/trending-1.png', alt: 'कंधे के ऊपर से मुड़कर देखने वाला पोज़' },
-  { id: 'trending-2', category: 'trending', src: '/poses/trending-2.png', alt: 'बालों में हाथ फेरता हेयर फ्लिप पोज़' },
-  { id: 'trending-3', category: 'trending', src: '/poses/trending-3.png', alt: 'मिरर सेल्फी फोन पोज़' },
-  { id: 'trending-4', category: 'trending', src: '/poses/trending-4.png', alt: 'दोनों हाथों से हार्ट बनाने वाला पोज़' },
-  { id: 'aesthetic-1', category: 'aesthetic', src: '/poses/aesthetic-1.png', alt: 'उंगलियों के बीच से झाँकने वाला पोज़' },
-  { id: 'aesthetic-2', category: 'aesthetic', src: '/poses/aesthetic-2.png', alt: 'हाथ पर ठुड्डी रखकर सोचता हुआ पोज़' },
-  { id: 'aesthetic-3', category: 'aesthetic', src: '/poses/aesthetic-3.png', alt: 'धूप में आँखें बंद कर बाँह उठाने वाला पोज़' },
-  { id: 'aesthetic-4', category: 'aesthetic', src: '/poses/aesthetic-4.png', alt: 'कैंडिड वॉकिंग स्ट्रीट स्टाइल पोज़' },
-  { id: 'selfie-1', category: 'selfie', src: '/poses/selfie-1.png', alt: 'गाल पर हाथ रखकर पोज़' },
-  { id: 'selfie-2', category: 'selfie', src: '/poses/selfie-2.png', alt: 'पीस साइन सेल्फी पोज़' },
-  { id: 'selfie-3', category: 'selfie', src: '/poses/selfie-3.png', alt: 'विंक के साथ फिंगर हार्ट पोज़' },
-  { id: 'couple-1', category: 'couple', src: '/poses/couple-1.png', alt: 'कंधे पर सिर रखकर कपल पोज़' },
-  { id: 'couple-2', category: 'couple', src: '/poses/couple-2.png', alt: 'माथे से माथा मिलाकर रोमांटिक पोज़' },
-  { id: 'couple-3', category: 'couple', src: '/poses/couple-3.png', alt: 'पिगीबैक राइड कपल पोज़' },
-  { id: 'friend-1', category: 'friend', src: '/poses/friend-1.png', alt: 'दोस्तों के साथ कंधे पर हाथ' },
-  { id: 'friend-2', category: 'friend', src: '/poses/friend-2.png', alt: 'हवा में कूदते हुए दोस्तों का पोज़' },
-  { id: 'family-1', category: 'family', src: '/poses/family-1.png', alt: 'फैमिली ग्रुप पोज़' },
-  { id: 'family-2', category: 'family', src: '/poses/family-2.png', alt: 'बच्चे को झुलाते हुए फैमिली पोज़' },
-  { id: 'kid-1', category: 'kid', src: '/poses/kid-1.png', alt: 'बैठकर हँसता बच्चा' },
-  { id: 'kid-2', category: 'kid', src: '/poses/kid-2.png', alt: 'खुशी से कूदता बच्चा' },
-]
+// हर श्रेणी में उपलब्ध पोज़ इमेज की संख्या (public/poses/ में मौजूद फाइलें)
+const POSE_COUNTS: Record<string, number> = {
+  trending: 25,
+  aesthetic: 25,
+  selfie: 20,
+  couple: 20,
+  friend: 20,
+  family: 20,
+  kid: 17,
+}
+
+const CATEGORY_ALT: Record<string, string> = {
+  trending: 'ट्रेंडिंग पोज़',
+  aesthetic: 'एस्थेटिक पोज़',
+  selfie: 'सेल्फी पोज़',
+  couple: 'कपल पोज़',
+  friend: 'फ्रेंड पोज़',
+  family: 'फैमिली पोज़',
+  kid: 'किड पोज़',
+}
+
+// जिन पोज़ के लिए खास विवरण उपलब्ध है
+const POSE_ALTS: Record<string, string> = {
+  'trending-1': 'कंधे के ऊपर से मुड़कर देखने वाला पोज़',
+  'trending-2': 'बालों में हाथ फेरता हेयर फ्लिप पोज़',
+  'trending-3': 'मिरर सेल्फी फोन पोज़',
+  'trending-4': 'दोनों हाथों से हार्ट बनाने वाला पोज़',
+  'trending-15': 'विंक करते हुए कैमरे की ओर इशारा करता पोज़',
+  'aesthetic-1': 'उंगलियों के बीच से झाँकने वाला पोज़',
+  'aesthetic-2': 'हाथ पर ठुड्डी रखकर सोचता हुआ पोज़',
+  'aesthetic-3': 'धूप में आँखें बंद कर बाँह उठाने वाला पोज़',
+  'aesthetic-4': 'कैंडिड वॉकिंग स्ट्रीट स्टाइल पोज़',
+  'aesthetic-20': 'हवा में दुपट्टा लहराता डांस पोज़',
+  'selfie-1': 'गाल पर हाथ रखकर पोज़',
+  'selfie-2': 'पीस साइन सेल्फी पोज़',
+  'selfie-3': 'विंक के साथ फिंगर हार्ट पोज़',
+  'couple-1': 'कंधे पर सिर रखकर कपल पोज़',
+  'couple-2': 'माथे से माथा मिलाकर रोमांटिक पोज़',
+  'couple-3': 'पिगीबैक राइड कपल पोज़',
+  'couple-12': 'पार्टनर को हवा में उठाकर घुमाने वाला पोज़',
+  'friend-1': 'दोस्तों के साथ कंधे पर हाथ',
+  'friend-2': 'हवा में कूदते हुए दोस्तों का पोज़',
+  'family-1': 'फैमिली ग्रुप पोज़',
+  'family-2': 'बच्चे को झुलाते हुए फैमिली पोज़',
+  'kid-1': 'बैठकर हँसता बच्चा',
+  'kid-2': 'खुशी से कूदता बच्चा',
+  'kid-12': 'टेडी बियर को गले लगाता बच्चा',
+}
+
+export const POSES: Pose[] = Object.entries(POSE_COUNTS).flatMap(([category, count]) =>
+  Array.from({ length: count }, (_, i) => {
+    const n = i + 1
+    const id = `${category}-${n}`
+    return {
+      id,
+      category,
+      src: `/poses/${id}.png`,
+      alt: POSE_ALTS[id] ?? `${CATEGORY_ALT[category]} ${n}`,
+    }
+  }),
+)
 
 export const INSPIRATION_PHOTOS = [
   { src: '/inspo/inspo-1.png', alt: 'पार्क में गाल पर हाथ रखकर बैठी लड़की' },
