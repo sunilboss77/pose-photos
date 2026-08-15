@@ -20,6 +20,12 @@ export const CATEGORY_REFERENCE_PHOTOS: Record<string, string> = {
   kid: '/references/kid.png',
 }
 
+// Each pose has its own colorful sample photo showing how that exact pose looks.
+// Falls back to the category photo if the per-pose image is missing.
+export function getPoseReferencePhoto(pose: Pose): string {
+  return `/pose-refs/${pose.id}.png`
+}
+
 export const POSE_CATEGORIES: PoseCategory[] = [
   { id: 'trending', label: 'ट्रेंडिंग' },
   { id: 'aesthetic', label: 'एस्थेटिक' },
