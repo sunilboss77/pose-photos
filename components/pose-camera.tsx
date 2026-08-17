@@ -15,8 +15,22 @@ import {
   Zap,
   ZapOff,
   Sun,
+  Sparkles,
+  Palette,
+  Aperture,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Phone,
+  PhoneOff,
+  Loader2,
 } from 'lucide-react'
 import { CATEGORY_REFERENCE_PHOTOS, POSE_CATEGORIES, POSES, getPoseReferencePhoto } from '@/lib/poses'
+import { CAMERA_FILTERS, getFilterById } from '@/lib/filters'
+import { useBackgroundBlur } from '@/hooks/use-background-blur'
+import { useGeminiLive } from '@/hooks/use-gemini-live'
+import type { AiCameraActions } from '@/lib/ai-assistant'
 import { cn } from '@/lib/utils'
 
 type CapturedPhoto = {
@@ -45,10 +59,29 @@ export function PoseCamera() {
   const [photos, setPhotos] = useState<CapturedPhoto[]>([])
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [showReference, setShowReference] = useState(true)
+  const [filterId, setFilterId] = useState('normal')
+  const [showFilters, setShowFilters] = useState(false)
+  const [blurEnabled, setBlurEnabled] = useState(false)
+  const [fillLight, setFillLight] = useState(false)
+  const [aiControlsVisible, setAiControlsVisible] = useState(true)
 
   const activePose = POSES.find((p) => p.id === activePoseId) ?? null
   const categoryPoses = POSES.filter((p) => p.category === activeCategory)
   const isMirrored = facingMode === 'user'
+  const activeFilter = getFilterById(filterId)
+
+  const { canvasRef: blurCanvasRef, blurReady, blurLoading } = useBackgroundBlur({
+    videoRef,
+    enabled: blurEnabled,
+  })
+
+  // Combined CSS filter for preview (LUT + exposure)
+  const previewFilter = [
+    activeFilter.css !== 'none' ? activeFilter.css : '',
+    exposure !== 0 ? `brightness(${1 + exposure * 0.25})` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   useEffect(() => {
     let cancelled = false
@@ -122,6 +155,12 @@ export function PoseCamera() {
     const video = videoRef.current
     if (!video || video.videoWidth === 0) return
 
+    // When portrait blur is active, capture from the processed canvas
+    const source: HTMLVideoElement | HTMLCanvasElement =
+      blurReady && blurCanvasRef.current && blurCanvasRef.current.width > 0
+        ? blurCanvasRef.current
+        : video
+
     const shouldFlash =
       flashMode === 'on' || (flashMode === 'auto' && isFrameDark())
 
@@ -179,11 +218,11 @@ export function PoseCamera() {
       ctx.translate(canvas.width, 0)
       ctx.scale(-1, 1)
     }
-    // Apply exposure (brightness) to the captured frame
-    if (exposure !== 0) {
-      ctx.filter = `brightness(${1 + exposure * 0.25})`
+    // Bake the LUT filter + exposure into the captured frame
+    if (previewFilter) {
+      ctx.filter = previewFilter
     }
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
+    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh)
 
     if (torchUsed) setTorch(false)
     setScreenFlash(false)
@@ -192,7 +231,7 @@ export function PoseCamera() {
     setPhotos((prev) => [{ id: `${Date.now()}`, dataUrl }, ...prev])
     setFlash(true)
     setTimeout(() => setFlash(false), 180)
-  }, [isMirrored, flashMode, facingMode, aspectRatio, zoom, exposure, isFrameDark, setTorch])
+  }, [isMirrored, flashMode, facingMode, aspectRatio, zoom, previewFilter, blurReady, blurCanvasRef, isFrameDark, setTorch])
 
   const handleCapture = useCallback(() => {
     if (countdown !== null) return
@@ -213,6 +252,109 @@ export function PoseCamera() {
       }
     }, 1000)
   }, [countdown, timerSeconds, takePhoto])
+
+  // ---------- AI Assistant (Gemini Live) ----------
+  const handleCaptureRef = useRef(handleCapture)
+  useEffect(() => {
+    handleCaptureRef.current = handleCapture
+  }, [handleCapture])
+
+  // Small JPEG frame from the camera so the AI can "see" the screen
+  const getVideoFrame = useCallback((): string | null => {
+    const video = videoRef.current
+    if (!video || video.videoWidth === 0) return null
+    const source: HTMLVideoElement | HTMLCanvasElement =
+      blurReady && blurCanvasRef.current && blurCanvasRef.current.width > 0 ? blurCanvasRef.current : video
+    const w = 320
+    const h = Math.round((video.videoHeight / video.videoWidth) * w)
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(source, 0, 0, w, h)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.6)
+    return dataUrl.split(',')[1] ?? null
+  }, [blurReady, blurCanvasRef])
+
+  const actionsRef = useRef<AiCameraActions | null>(null)
+  actionsRef.current = {
+    selectPose: (poseId) => {
+      const pose = POSES.find((p) => p.id === poseId)
+      if (!pose) return `Pose "${poseId}" नहीं मिला`
+      setActiveCategory(pose.category)
+      setActivePoseId(pose.id)
+      setShowReference(true)
+      return `Pose लग गया: ${pose.alt}`
+    },
+    setZoom: (level) => {
+      const z = [1, 2, 3].includes(level) ? level : 1
+      setZoom(z)
+      return `Zoom ${z}x हो गया`
+    },
+    setTimer: (seconds) => {
+      const t = seconds === 3 ? 3 : seconds === 10 ? 10 : 0
+      setTimerSeconds(t)
+      return t === 0 ? 'Timer बंद हो गया' : `Timer ${t} second set हो गया`
+    },
+    capturePhoto: () => {
+      handleCaptureRef.current()
+      return 'Photo खींच ली गई'
+    },
+    setFlash: (mode) => {
+      const m = mode === 'on' ? 'on' : mode === 'auto' ? 'auto' : 'off'
+      setFlashMode(m)
+      return `Flash ${m === 'off' ? 'बंद' : m === 'on' ? 'चालू' : 'auto'} हो गया`
+    },
+    setExposure: (value) => {
+      const v = Math.max(-2, Math.min(2, Math.round(value * 2) / 2))
+      setExposure(v)
+      return `Exposure ${v > 0 ? '+' : ''}${v} हो गया`
+    },
+    applyFilter: (fid) => {
+      const f = CAMERA_FILTERS.find((x) => x.id === fid)
+      if (!f) return `Filter "${fid}" नहीं मिला`
+      setFilterId(f.id)
+      setShowFilters(true)
+      return `Filter लग गया: ${f.label}`
+    },
+    setBackgroundBlur: (enabled) => {
+      setBlurEnabled(enabled)
+      return enabled ? 'Background blur चालू हो गया' : 'Background blur बंद हो गया'
+    },
+    switchCamera: () => {
+      setFacingMode((f) => (f === 'user' ? 'environment' : 'user'))
+      return 'Camera switch हो गया'
+    },
+    turnOnLight: (on) => {
+      if (facingMode === 'environment') {
+        setTorch(on)
+        return on ? 'Torch चालू हो गई' : 'Torch बंद हो गई'
+      }
+      setFillLight(on)
+      return on ? 'Screen light चालू हो गई' : 'Screen light बंद हो गई'
+    },
+  }
+
+  const ai = useGeminiLive({ actionsRef, getVideoFrame })
+
+  // WhatsApp-style auto-hide for AI call controls
+  useEffect(() => {
+    if (ai.status !== 'connected' || !aiControlsVisible) return
+    const t = setTimeout(() => setAiControlsVisible(false), 4000)
+    return () => clearTimeout(t)
+  }, [ai.status, aiControlsVisible])
+
+  useEffect(() => {
+    if (ai.status === 'connected') setAiControlsVisible(true)
+  }, [ai.status])
+
+  function handleViewfinderTap() {
+    if (ai.status === 'connected') {
+      setAiControlsVisible((v) => !v)
+    }
+  }
+  // ---------- End AI Assistant ----------
 
   function cycleTimer() {
     setTimerSeconds((t) => (t === 0 ? 3 : t === 3 ? 10 : 0))
@@ -302,6 +444,30 @@ export function PoseCamera() {
           </button>
           <button
             type="button"
+            onClick={() => setShowFilters((s) => !s)}
+            className={cn(
+              'flex size-10 items-center justify-center rounded-full transition-colors hover:bg-accent',
+              filterId !== 'normal' || showFilters ? 'text-primary' : 'text-foreground',
+            )}
+            aria-label={showFilters ? 'फ़िल्टर बंद करें' : 'फ़िल्टर खोलें'}
+            aria-pressed={showFilters}
+          >
+            <Palette className="size-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setBlurEnabled((b) => !b)}
+            className={cn(
+              'flex size-10 items-center justify-center rounded-full transition-colors hover:bg-accent',
+              blurEnabled ? 'text-primary' : 'text-foreground',
+            )}
+            aria-label={blurEnabled ? 'बैकग्राउंड ब्लर बंद करें' : 'बैकग्राउंड ब्लर चालू करें'}
+            aria-pressed={blurEnabled}
+          >
+            <Aperture className="size-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
             onClick={() => setShowGrid((g) => !g)}
             className={cn(
               'flex size-10 items-center justify-center rounded-full transition-colors hover:bg-accent',
@@ -323,18 +489,50 @@ export function PoseCamera() {
             aspectRatio === 'full' ? 'size-full' : 'max-h-full w-full',
           )}
           style={aspectRatio === 'full' ? undefined : { aspectRatio: aspectRatio === '4:3' ? '3 / 4' : '9 / 16' }}
+          onClick={handleViewfinderTap}
         >
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="size-full object-cover transition-transform duration-200"
+          className={cn('size-full object-cover transition-transform duration-200', blurReady && 'opacity-0')}
           style={{
             transform: `${isMirrored ? 'scaleX(-1) ' : ''}scale(${zoom})`,
-            filter: exposure !== 0 ? `brightness(${1 + exposure * 0.25})` : undefined,
+            filter: previewFilter || undefined,
           }}
         />
+
+        {/* Portrait-mode blur canvas (person sharp, background blurred) */}
+        <canvas
+          ref={blurCanvasRef}
+          aria-hidden="true"
+          className={cn(
+            'pointer-events-none absolute inset-0 size-full object-cover transition-transform duration-200',
+            !blurReady && 'hidden',
+          )}
+          style={{
+            transform: `${isMirrored ? 'scaleX(-1) ' : ''}scale(${zoom})`,
+            filter: previewFilter || undefined,
+          }}
+        />
+
+        {/* Blur model loading indicator */}
+        {blurEnabled && blurLoading && (
+          <div className="absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur">
+            <Loader2 className="size-4 animate-spin text-white" aria-hidden="true" />
+            <span className="text-xs font-medium text-white">Blur लोड हो रहा है...</span>
+          </div>
+        )}
+
+        {/* AI fill light (front camera): bright frame around the edges */}
+        {fillLight && (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 border-[28px] border-white"
+            style={{ boxShadow: 'inset 0 0 60px 30px rgba(255,255,255,0.85)' }}
+            aria-hidden="true"
+          />
+        )}
 
         {/* Pose overlay: black background becomes transparent with screen blend */}
         {activePose && !cameraError && (
@@ -426,6 +624,144 @@ export function PoseCamera() {
                 {level}x
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Filter strip */}
+        {showFilters && !cameraError && (
+          <div
+            className="absolute bottom-14 left-0 right-0 z-10 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none]"
+            role="listbox"
+            aria-label="फ़िल्टर चुनें"
+          >
+            {CAMERA_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setFilterId(f.id)
+                }}
+                className={cn(
+                  'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur transition-colors',
+                  filterId === f.id ? 'bg-primary text-primary-foreground' : 'bg-black/50 text-white hover:bg-black/70',
+                )}
+                role="option"
+                aria-selected={filterId === f.id}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* AI Assistant: start button (idle / error) */}
+        {!cameraError && ai.status !== 'connected' && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (ai.status === 'connecting') return
+              ai.connect()
+            }}
+            className={cn(
+              'absolute right-3 top-3 z-10 flex items-center gap-2 rounded-full bg-black/60 py-2 pl-3 pr-4 text-white shadow-lg backdrop-blur transition-colors hover:bg-black/80',
+            )}
+            aria-label="AI असिस्टेंट कॉल शुरू करें"
+            disabled={ai.status === 'connecting'}
+          >
+            {ai.status === 'connecting' ? (
+              <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
+            ) : (
+              <Sparkles className="size-5 text-primary" aria-hidden="true" />
+            )}
+            <span className="text-sm font-semibold">
+              {ai.status === 'connecting' ? 'कनेक्ट हो रहा है...' : 'AI असिस्टेंट'}
+            </span>
+          </button>
+        )}
+
+        {/* AI speaking indicator (always visible during call) */}
+        {ai.status === 'connected' && (
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-2 rounded-full bg-black/60 py-1.5 pl-2 pr-3 backdrop-blur" role="status">
+            <span
+              className={cn(
+                'relative flex size-7 items-center justify-center rounded-full bg-primary/20',
+                ai.aiSpeaking && 'animate-pulse',
+              )}
+              aria-hidden="true"
+            >
+              {ai.aiSpeaking && <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />}
+              <Sparkles className="relative size-4 text-primary" />
+            </span>
+            <span className="text-xs font-semibold text-white">
+              {ai.aiSpeaking ? 'AI बोल रहा है...' : 'AI सुन रहा है'}
+            </span>
+          </div>
+        )}
+
+        {/* AI call controls (WhatsApp-style, auto-hide) */}
+        {ai.status === 'connected' && (
+          <div
+            className={cn(
+              'absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full bg-black/60 px-4 py-2.5 shadow-lg backdrop-blur transition-all duration-300',
+              aiControlsVisible ? 'opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
+            )}
+            role="group"
+            aria-label="AI कॉल कंट्रोल"
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                ai.toggleMute()
+              }}
+              className={cn(
+                'flex size-11 items-center justify-center rounded-full transition-colors',
+                ai.muted ? 'bg-white text-black' : 'bg-white/20 text-white hover:bg-white/30',
+              )}
+              aria-label={ai.muted ? 'माइक अनम्यूट करें' : 'माइक म्यूट करें'}
+              aria-pressed={ai.muted}
+            >
+              {ai.muted ? <MicOff className="size-5" aria-hidden="true" /> : <Mic className="size-5" aria-hidden="true" />}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                ai.toggleSpeaker()
+              }}
+              className={cn(
+                'flex size-11 items-center justify-center rounded-full transition-colors',
+                ai.speakerLoud ? 'bg-white text-black' : 'bg-white/20 text-white hover:bg-white/30',
+              )}
+              aria-label={ai.speakerLoud ? 'स्पीकर नॉर्मल करें' : 'स्पीकर तेज़ करें'}
+              aria-pressed={ai.speakerLoud}
+            >
+              {ai.speakerLoud ? (
+                <Volume2 className="size-5" aria-hidden="true" />
+              ) : (
+                <VolumeX className="size-5" aria-hidden="true" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                ai.disconnect()
+              }}
+              className="flex size-11 items-center justify-center rounded-full bg-red-600 text-white transition-colors hover:bg-red-700"
+              aria-label="AI कॉल समाप्त करें"
+            >
+              <PhoneOff className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
+        {/* AI error toast */}
+        {ai.errorMsg && ai.status === 'error' && (
+          <div className="absolute left-1/2 top-16 z-10 w-[85%] -translate-x-1/2 rounded-xl bg-black/70 px-4 py-2.5 text-center backdrop-blur">
+            <p className="text-xs text-white text-balance">{ai.errorMsg}</p>
           </div>
         )}
 
