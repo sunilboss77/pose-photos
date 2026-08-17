@@ -27,7 +27,13 @@ import {
   Loader2,
 } from 'lucide-react'
 import { CATEGORY_REFERENCE_PHOTOS, POSE_CATEGORIES, POSES, getPoseReferencePhoto } from '@/lib/poses'
-import { CAMERA_FILTERS, getFilterById } from '@/lib/filters'
+import {
+  CAMERA_FILTERS,
+  applyColorMatrix,
+  cssFilterToColorMatrix,
+  getFilterById,
+  supportsCanvasFilter,
+} from '@/lib/filters'
 import { useBackgroundBlur } from '@/hooks/use-background-blur'
 import { useGeminiLive } from '@/hooks/use-gemini-live'
 import type { AiCameraActions } from '@/lib/ai-assistant'
@@ -218,11 +224,27 @@ export function PoseCamera() {
       ctx.translate(canvas.width, 0)
       ctx.scale(-1, 1)
     }
-    // Bake the LUT filter + exposure into the captured frame
-    if (previewFilter) {
+    // Bake the LUT filter + exposure into the captured frame.
+    // ctx.filter is not supported on iOS Safari and some mobile browsers,
+    // so fall back to applying the filter directly on the pixels there.
+    const canUseCtxFilter = supportsCanvasFilter()
+    if (previewFilter && canUseCtxFilter) {
       ctx.filter = previewFilter
     }
     ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh)
+
+    if (previewFilter && !canUseCtxFilter) {
+      const matrix = cssFilterToColorMatrix(previewFilter)
+      if (matrix) {
+        try {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          applyColorMatrix(imageData, matrix)
+          ctx.putImageData(imageData, 0, 0)
+        } catch (err) {
+          console.log('[v0] Pixel filter fallback failed:', err)
+        }
+      }
+    }
 
     if (torchUsed) setTorch(false)
     setScreenFlash(false)
