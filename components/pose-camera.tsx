@@ -356,6 +356,66 @@ export function PoseCamera() {
       setFillLight(on)
       return on ? 'Screen light चालू हो गई' : 'Screen light बंद हो गई'
     },
+    setAspectRatio: (ratio) => {
+      const r = ratio === '4:3' ? '4:3' : ratio === '16:9' ? '16:9' : 'full'
+      setAspectRatio(r)
+      return `Aspect ratio ${r === 'full' ? 'full screen' : r} हो गया`
+    },
+    setGrid: (enabled) => {
+      setShowGrid(enabled)
+      return enabled ? 'Grid चालू हो गया' : 'Grid बंद हो गया'
+    },
+    selectCategory: (categoryId) => {
+      const cat = POSE_CATEGORIES.find((c) => c.id === categoryId)
+      if (!cat) return `Category "${categoryId}" नहीं मिली`
+      setActiveCategory(cat.id)
+      const first = POSES.find((p) => p.category === cat.id)
+      setActivePoseId(first ? first.id : null)
+      setShowReference(true)
+      return `Category बदल गई: ${cat.label}${first ? `, pose लगा: ${first.alt}` : ''}`
+    },
+    clearPose: () => {
+      setActivePoseId(null)
+      return 'Pose हटा दिया गया, अब normal camera है'
+    },
+    showPoseReference: (visible) => {
+      setShowReference(visible)
+      return visible ? 'Reference photo दिख रही है' : 'Reference photo छुपा दी गई'
+    },
+    openGallery: (open) => {
+      setGalleryOpen(open)
+      if (open) {
+        return photos.length === 0 ? 'गैलरी खोल दी, अभी कोई photo नहीं है' : `गैलरी खोल दी, ${photos.length} photos हैं`
+      }
+      return 'गैलरी बंद कर दी'
+    },
+    downloadLastPhoto: () => {
+      if (photos.length === 0) return 'अभी कोई photo नहीं है, पहले photo खींचो'
+      downloadPhoto(photos[0])
+      return 'आखिरी photo download हो गई'
+    },
+    getCameraStatus: () => {
+      const pose = POSES.find((p) => p.id === activePoseId)
+      const cat = POSE_CATEGORIES.find((c) => c.id === activeCategory)
+      const filter = getFilterById(filterId)
+      return [
+        `Camera: ${facingMode === 'user' ? 'front' : 'back'}`,
+        `Pose: ${pose ? `${pose.id} (${pose.alt})` : 'कोई नहीं'}`,
+        `Category: ${cat?.label ?? activeCategory}`,
+        `Reference photo: ${showReference ? 'दिख रही है' : 'छुपी है'}`,
+        `Filter: ${filter.label} (${filter.id})`,
+        `Zoom: ${zoom}x`,
+        `Timer: ${timerSeconds === 0 ? 'off' : `${timerSeconds}s`}`,
+        `Flash: ${flashMode}`,
+        `Exposure: ${exposure > 0 ? '+' : ''}${exposure}`,
+        `Aspect ratio: ${aspectRatio}`,
+        `Background blur: ${blurEnabled ? 'on' : 'off'}`,
+        `Grid: ${showGrid ? 'on' : 'off'}`,
+        `Light: ${fillLight ? 'on' : 'off'}`,
+        `Photos खींची गईं: ${photos.length}`,
+        `Gallery: ${galleryOpen ? 'खुली है' : 'बंद है'}`,
+      ].join(', ')
+    },
   }
 
   const ai = useGeminiLive({ actionsRef, getVideoFrame })
@@ -689,7 +749,7 @@ export function PoseCamera() {
             className={cn(
               'absolute right-3 top-3 z-10 flex items-center gap-2 rounded-full bg-black/60 py-2 pl-3 pr-4 text-white shadow-lg backdrop-blur transition-colors hover:bg-black/80',
             )}
-            aria-label="AI असिस्टेंट कॉल शुरू करें"
+            aria-label="AI असि���्टेंट कॉल शुरू करें"
             disabled={ai.status === 'connecting'}
           >
             {ai.status === 'connecting' ? (

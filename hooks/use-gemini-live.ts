@@ -180,6 +180,30 @@ export function useGeminiLive({
           case 'turnOnLight':
             result = actions.turnOnLight(Boolean(args.on))
             break
+          case 'setAspectRatio':
+            result = actions.setAspectRatio(String(args.ratio ?? 'full'))
+            break
+          case 'setGrid':
+            result = actions.setGrid(Boolean(args.enabled))
+            break
+          case 'selectCategory':
+            result = actions.selectCategory(String(args.categoryId ?? ''))
+            break
+          case 'clearPose':
+            result = actions.clearPose()
+            break
+          case 'showPoseReference':
+            result = actions.showPoseReference(Boolean(args.visible))
+            break
+          case 'openGallery':
+            result = actions.openGallery(Boolean(args.open))
+            break
+          case 'downloadLastPhoto':
+            result = actions.downloadLastPhoto()
+            break
+          case 'getCameraStatus':
+            result = actions.getCameraStatus()
+            break
           default:
             result = 'अनजान function'
         }

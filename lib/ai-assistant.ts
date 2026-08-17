@@ -24,7 +24,8 @@ export const AI_SYSTEM_INSTRUCTION = `तुम "पोज़ फोटो" न�
    - Pose: यूज़र का pose reference से match हो रहा है या नहीं — "हाथ थोड़ा ऊपर करो", "चेहरा थोड़ा tilt करो"
 2. Occasion/जगह के हिसाब से pose suggest करो। यूज़र से पूछो "कहाँ हो? क्या occasion है?" और फिर selectPose function से खुद सही pose लगा दो।
 3. जब pose perfect हो जाए तो बोलो "Perfect! अब हिलना मत... 3, 2, 1!" और capturePhoto function से खुद photo खींच लो।
-4. कैमरा के सारे controls तुम्हारे पास हैं — zoom, timer, flash, exposure, filter, background blur, camera switch, light। जरूरत के हिसाब से खुद use करो और हर बार बोलकर बताओ कि क्या किया ("Zoom थोड़ा कम कर दिया, अब पूरा pose frame में आ रहा है!")।
+4. ऐप के सारे controls तुम्हारे पास हैं — zoom, timer, flash, exposure, filter, background blur, camera switch, light, aspect ratio, grid, pose category, pose हटाना, reference photo दिखाना/छुपाना, गैलरी खोलना/बंद करना, photo download करना। यूज़र जो भी बोले, सही function से खुद कर दो और हर बार बोलकर बताओ कि क्या किया ("Zoom थोड़ा कम कर दिया, अब पूरा pose frame में आ रहा है!")।
+5. अगर तुम्हें camera की current setting पता करनी हो (कौन सा pose/filter लगा है, कितनी photos खींची हैं), तो getCameraStatus function call करो — अंदाज़ा मत लगाओ।
 
 ऐप में उपलब्ध poses (selectPose में poseId के रूप में id use करो):
 
@@ -144,6 +145,76 @@ export const AI_TOOL_DECLARATIONS: FunctionDeclaration[] = [
       required: ['on'],
     },
   },
+  {
+    name: 'setAspectRatio',
+    description: 'Photo का aspect ratio set करता है: full (पूरी स्क्रीन), 4:3 या 16:9।',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        ratio: { type: Type.STRING, description: 'Aspect ratio: "full", "4:3" या "16:9"' },
+      },
+      required: ['ratio'],
+    },
+  },
+  {
+    name: 'setGrid',
+    description: 'Composition grid (rule of thirds की lines) on/off करता है।',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        enabled: { type: Type.BOOLEAN, description: 'true = grid on, false = grid off' },
+      },
+      required: ['enabled'],
+    },
+  },
+  {
+    name: 'selectCategory',
+    description: `Pose category बदलता है — नीचे की pose strip उस category के poses दिखाने लगती है। Category ids: ${POSE_CATEGORIES.map((c) => c.id).join(', ')}`,
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        categoryId: { type: Type.STRING, description: 'Category की id, जैसे trending, couple, aesthetic' },
+      },
+      required: ['categoryId'],
+    },
+  },
+  {
+    name: 'clearPose',
+    description: 'Pose overlay पूरी तरह हटा देता है (बिना pose के normal camera)।',
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: 'showPoseReference',
+    description: 'Pose की reference photo (छोटा card ऊपर-बाएँ) दिखाता या छुपाता है। Pose overlay बना रहता है।',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        visible: { type: Type.BOOLEAN, description: 'true = reference photo दिखाओ, false = छुपाओ' },
+      },
+      required: ['visible'],
+    },
+  },
+  {
+    name: 'openGallery',
+    description: 'गैलरी खोलता या बंद करता है, जहाँ खींची गई photos दिखती हैं।',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        open: { type: Type.BOOLEAN, description: 'true = गैलरी खोलो, false = बंद करो' },
+      },
+      required: ['open'],
+    },
+  },
+  {
+    name: 'downloadLastPhoto',
+    description: 'सबसे नई (आखिरी खींची गई) photo phone में download/save करता है।',
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: 'getCameraStatus',
+    description: 'Camera की मौजूदा settings बताता है — कौन सा pose, filter, zoom, timer, flash, exposure, aspect ratio, कितनी photos खींची गई हैं वगैरह। यूज़र कुछ पूछे या तुम्हें current state चाहिए तो इसे call करो।',
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
 ]
 
 // The client-side action handlers the camera provides to the AI hook
@@ -158,4 +229,12 @@ export type AiCameraActions = {
   setBackgroundBlur: (enabled: boolean) => string
   switchCamera: () => string
   turnOnLight: (on: boolean) => string
+  setAspectRatio: (ratio: string) => string
+  setGrid: (enabled: boolean) => string
+  selectCategory: (categoryId: string) => string
+  clearPose: () => string
+  showPoseReference: (visible: boolean) => string
+  openGallery: (open: boolean) => string
+  downloadLastPhoto: () => string
+  getCameraStatus: () => string
 }
